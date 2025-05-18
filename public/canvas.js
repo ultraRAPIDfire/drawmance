@@ -6,7 +6,9 @@ let drawing = false;
 let prevPos = null;
 let color = '#000000';
 let brushSize = 3;
-let currentTool = 'brush'; // 'brush' or 'eraser' or 'text'
+let currentTool = 'brush'; // 'brush', 'eraser', or 'text'
+let canClear = true;
+let clearCooldown = 60; // seconds
 
 // Resize canvas to fill window
 function resizeCanvas() {
@@ -32,9 +34,32 @@ brushSizeInput.addEventListener('input', (e) => {
 });
 
 clearBtn.addEventListener('click', () => {
+  if (!canClear) return;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   socket.emit('clear');
+
+  canClear = false;
+  startClearCooldown();
 });
+
+function startClearCooldown() {
+  let timeLeft = clearCooldown;
+  clearBtn.disabled = true;
+  const originalText = clearBtn.textContent;
+
+  const interval = setInterval(() => {
+    clearBtn.textContent = `Clear (${timeLeft}s)`;
+    timeLeft--;
+
+    if (timeLeft < 0) {
+      clearBtn.textContent = originalText;
+      clearBtn.disabled = false;
+      canClear = true;
+      clearInterval(interval);
+    }
+  }, 1000);
+}
 
 eraserBtn.addEventListener('click', () => {
   currentTool = currentTool === 'eraser' ? 'brush' : 'eraser';
@@ -57,7 +82,7 @@ canvas.addEventListener('mousedown', (e) => {
       ctx.fillText(userText, x, y);
       socket.emit('text', { x, y, text: userText, color, size: brushSize });
     }
-    currentTool = 'brush'; // reset tool
+    currentTool = 'brush';
     return;
   }
 
@@ -87,7 +112,7 @@ canvas.addEventListener('mousemove', (e) => {
   prevPos = currentPos;
 });
 
-// Socket listeners for real-time drawing and history sync
+// Socket listeners
 socket.on('draw', (data) => {
   drawLine(data.from, data.to, data.color, data.brushSize);
 });
@@ -114,7 +139,7 @@ socket.on('init', (history) => {
   });
 });
 
-// Drawing function
+// Draw line function
 function drawLine(from, to, strokeColor, size) {
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = size;
