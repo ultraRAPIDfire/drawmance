@@ -8,28 +8,20 @@
 </head>
 <body>
   <div class="toolbar">
-    <!-- existing controls -->
     <label>
-      Tool:
-      <select id="toolSelect">
-        <option value="brush">Brush</option>
-        <option value="text">Text</option>
-      </select>
+      Color:
+      <input type="color" id="colorPicker" value="#000000" />
     </label>
-  
+
     <label>
-      Font Size:
-      <input type="number" id="fontSize" min="8" max="72" value="20" />
+      Brush Size:
+      <input type="range" id="brushSize" min="1" max="20" value="3" />
     </label>
-  
-    <label>
-      <input type="checkbox" id="boldCheckbox" /> Bold
-    </label>
-  
-    <label>
-      <input type="checkbox" id="italicCheckbox" /> Italic
-    </label>
-    <!-- existing controls like colorPicker, brushSize, clearBtn -->
+
+    <button id="brushBtn">Brush</button>
+    <button id="eraserBtn">Eraser</button>
+    <button id="textBtn">Text</button>
+    <button id="clearBtn">Clear Canvas</button>
   </div>
 
   <canvas id="canvas"></canvas>

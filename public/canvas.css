@@ -19,6 +19,7 @@ body {
   color: white;
   gap: 15px;
   user-select: none;
+  flex-wrap: wrap;
 }
 
 .toolbar label {
@@ -32,8 +33,8 @@ body {
   width: 100px;
 }
 
-#clearBtn {
-  background: #f44336;
+button {
+  background: #555;
   border: none;
   color: white;
   padding: 8px 15px;
@@ -41,6 +42,14 @@ body {
   cursor: pointer;
   font-weight: 600;
   transition: background 0.3s ease;
+}
+
+button:hover {
+  background: #444;
+}
+
+#clearBtn {
+  background: #f44336;
 }
 
 #clearBtn:hover {
@@ -54,16 +63,4 @@ canvas {
   cursor: crosshair;
   width: 100%;
   height: 100%;
-}
-
-#textInput {
-  position: absolute;
-  border: 2px solid #2d89ef;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  padding: 4px 8px;
-  outline: none;
-  resize: none;
-  z-index: 10;
-  box-shadow: 0 0 5px rgba(45, 137, 239, 0.6);
-  border-radius: 4px;
 }
