@@ -7,36 +7,49 @@ const io = require("socket.io")(http, {
 
 app.use(express.static("public"));
 
-// Store all drawing and text actions
-const drawingHistory = [];
+const rooms = {}; // To store drawing history per room
 
-io.on('connection', (socket) => {
-  console.log('a user connected');
+io.on("connection", (socket) => {
+  let currentRoom = null;
 
-  // Send existing history to new client
-  socket.emit('init', drawingHistory);
+  socket.on("joinRoom", (room) => {
+    if (currentRoom) {
+      socket.leave(currentRoom);
+    }
 
-  // Drawing/erasing
-  socket.on('draw', (data) => {
-    drawingHistory.push({ type: 'draw', data });
-    socket.broadcast.emit('draw', data);
+    currentRoom = room;
+    socket.join(room);
+
+    if (!rooms[room]) {
+      rooms[room] = [];
+    }
+
+    // Send existing history to newly joined user
+    socket.emit("init", rooms[room]);
+
+    console.log(`User joined room: ${room}`);
   });
 
-  // Text insert
-  socket.on('text', (data) => {
-    drawingHistory.push({ type: 'text', data });
-    socket.broadcast.emit('text', data);
+  socket.on("draw", (data) => {
+    if (!data.room) return;
+    rooms[data.room].push({ type: "draw", data });
+    socket.to(data.room).emit("draw", data);
   });
 
-  // Clear canvas
-  socket.on('clear', () => {
-    drawingHistory.length = 0; // Clear history
-    socket.broadcast.emit('clear');
-    socket.emit('clear');
+  socket.on("clear", (room) => {
+    if (!room) return;
+    rooms[room] = [];
+    socket.to(room).emit("clear");
   });
 
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
+  socket.on("text", (data) => {
+    if (!data.room) return;
+    rooms[data.room].push({ type: "text", data });
+    socket.to(data.room).emit("text", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
   });
 });
 

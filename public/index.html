@@ -7,6 +7,12 @@
   <link rel="stylesheet" href="canvas.css" />
 </head>
 <body>
+
+  <div class="room-setup">
+    <input type="text" id="roomInput" placeholder="Enter or generate room code" />
+    <button id="joinRoomBtn">Join Room</button>
+  </div>
+
   <div class="toolbar">
     <label>
       Color:
@@ -23,7 +29,7 @@
     <button id="textBtn">Text</button>
     <button id="clearBtn">Clear Canvas</button>
   </div>
-
+  
   <canvas id="canvas"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>

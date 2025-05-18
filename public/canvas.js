@@ -1,16 +1,17 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const socket = io();
 
+let socket;
+let room = '';
 let drawing = false;
 let prevPos = null;
 let color = '#000000';
 let brushSize = 3;
-let currentTool = 'brush'; // 'brush', 'eraser', or 'text'
+let currentTool = 'brush';
 let canClear = true;
-let clearCooldown = 60; // seconds
+let clearCooldown = 30;
 
-// Resize canvas to fill window
+// Resize canvas to fit window
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight - document.querySelector('.toolbar').offsetHeight;
@@ -18,12 +19,14 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Toolbar controls
+// Toolbar elements
 const colorPicker = document.getElementById('colorPicker');
 const brushSizeInput = document.getElementById('brushSize');
 const clearBtn = document.getElementById('clearBtn');
 const eraserBtn = document.getElementById('eraserBtn');
 const textBtn = document.getElementById('textBtn');
+const roomInput = document.getElementById('roomInput');
+const joinRoomBtn = document.getElementById('joinRoomBtn');
 
 colorPicker.addEventListener('input', (e) => {
   color = e.target.value;
@@ -34,11 +37,9 @@ brushSizeInput.addEventListener('input', (e) => {
 });
 
 clearBtn.addEventListener('click', () => {
-  if (!canClear) return;
-
+  if (!canClear || !room) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  socket.emit('clear');
-
+  socket.emit('clear', room);
   canClear = false;
   startClearCooldown();
 });
@@ -47,11 +48,9 @@ function startClearCooldown() {
   let timeLeft = clearCooldown;
   clearBtn.disabled = true;
   const originalText = clearBtn.textContent;
-
   const interval = setInterval(() => {
     clearBtn.textContent = `Clear (${timeLeft}s)`;
     timeLeft--;
-
     if (timeLeft < 0) {
       clearBtn.textContent = originalText;
       clearBtn.disabled = false;
@@ -70,8 +69,9 @@ textBtn.addEventListener('click', () => {
   currentTool = 'text';
 });
 
-// Drawing handlers
 canvas.addEventListener('mousedown', (e) => {
+  if (!room) return;
+
   if (currentTool === 'text') {
     const x = e.offsetX;
     const y = e.offsetY;
@@ -80,7 +80,7 @@ canvas.addEventListener('mousedown', (e) => {
       ctx.fillStyle = color;
       ctx.font = `${brushSize * 5}px sans-serif`;
       ctx.fillText(userText, x, y);
-      socket.emit('text', { x, y, text: userText, color, size: brushSize });
+      socket.emit('text', { room, x, y, text: userText, color, size: brushSize });
     }
     currentTool = 'brush';
     return;
@@ -101,50 +101,68 @@ canvas.addEventListener('mouseout', () => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!drawing || currentTool === 'text') return;
+  if (!drawing || currentTool === 'text' || !room) return;
 
   const currentPos = { x: e.offsetX, y: e.offsetY };
   const strokeColor = currentTool === 'eraser' ? '#ffffff' : color;
 
   drawLine(prevPos, currentPos, strokeColor, brushSize);
-  socket.emit('draw', { from: prevPos, to: currentPos, color: strokeColor, brushSize });
+  socket.emit('draw', { room, from: prevPos, to: currentPos, color: strokeColor, brushSize });
 
   prevPos = currentPos;
 });
 
-// Socket listeners
-socket.on('draw', (data) => {
-  drawLine(data.from, data.to, data.color, data.brushSize);
+// Join or create a room
+joinRoomBtn.addEventListener('click', () => {
+  const input = roomInput.value.trim();
+  room = input || Math.random().toString(36).substr(2, 6).toUpperCase();
+  if (!input) {
+    alert(`Generated room code: ${room}`);
+    roomInput.value = room;
+  }
+  initSocket();
+  joinRoomBtn.disabled = true;
+  roomInput.disabled = true;
 });
 
-socket.on('clear', () => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-});
+function initSocket() {
+  socket = io();
 
-socket.on('text', (data) => {
-  ctx.fillStyle = data.color;
-  ctx.font = `${data.size * 5}px sans-serif`;
-  ctx.fillText(data.text, data.x, data.y);
-});
-
-socket.on('init', (history) => {
-  history.forEach((entry) => {
-    if (entry.type === 'draw') {
-      drawLine(entry.data.from, entry.data.to, entry.data.color, entry.data.brushSize);
-    } else if (entry.type === 'text') {
-      ctx.fillStyle = entry.data.color;
-      ctx.font = `${entry.data.size * 5}px sans-serif`;
-      ctx.fillText(entry.data.text, entry.data.x, entry.data.y);
-    }
+  socket.on('connect', () => {
+    socket.emit('joinRoom', room);
   });
-});
 
-// Draw line function
+  socket.on('draw', (data) => {
+    drawLine(data.from, data.to, data.color, data.brushSize);
+  });
+
+  socket.on('clear', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  socket.on('text', (data) => {
+    ctx.fillStyle = data.color;
+    ctx.font = `${data.size * 5}px sans-serif`;
+    ctx.fillText(data.text, data.x, data.y);
+  });
+
+  socket.on('init', (history) => {
+    history.forEach((entry) => {
+      if (entry.type === 'draw') {
+        drawLine(entry.data.from, entry.data.to, entry.data.color, entry.data.brushSize);
+      } else if (entry.type === 'text') {
+        ctx.fillStyle = entry.data.color;
+        ctx.font = `${entry.data.size * 5}px sans-serif`;
+        ctx.fillText(entry.data.text, entry.data.x, entry.data.y);
+      }
+    });
+  });
+}
+
 function drawLine(from, to, strokeColor, size) {
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = size;
   ctx.lineCap = 'round';
-
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
   ctx.lineTo(to.x, to.y);
