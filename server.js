@@ -7,22 +7,32 @@ const io = require("socket.io")(http, {
 
 app.use(express.static("public"));
 
+// Store all drawing and text actions
+const drawingHistory = [];
+
 io.on('connection', (socket) => {
   console.log('a user connected');
 
-  // Relay drawing and erasing (same structure)
+  // Send existing history to new client
+  socket.emit('init', drawingHistory);
+
+  // Drawing/erasing
   socket.on('draw', (data) => {
+    drawingHistory.push({ type: 'draw', data });
     socket.broadcast.emit('draw', data);
   });
 
-  // Relay clear canvas
-  socket.on('clear', () => {
-    socket.broadcast.emit('clear');
+  // Text insert
+  socket.on('text', (data) => {
+    drawingHistory.push({ type: 'text', data });
+    socket.broadcast.emit('text', data);
   });
 
-  // Relay inserted text
-  socket.on('text', (data) => {
-    socket.broadcast.emit('text', data);
+  // Clear canvas
+  socket.on('clear', () => {
+    drawingHistory.length = 0; // Clear history
+    socket.broadcast.emit('clear');
+    socket.emit('clear');
   });
 
   socket.on('disconnect', () => {
