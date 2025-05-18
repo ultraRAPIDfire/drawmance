@@ -55,3 +55,15 @@ canvas {
   width: 100%;
   height: 100%;
 }
+
+#textInput {
+  position: absolute;
+  border: 2px solid #2d89ef;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 4px 8px;
+  outline: none;
+  resize: none;
+  z-index: 10;
+  box-shadow: 0 0 5px rgba(45, 137, 239, 0.6);
+  border-radius: 4px;
+}

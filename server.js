@@ -20,6 +20,10 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('clear');
   });
 
+  socket.on('text', (data) => {
+    socket.broadcast.emit('text', data);
+  });  
+
   socket.on('disconnect', () => {
     console.log('user disconnected');
   });
