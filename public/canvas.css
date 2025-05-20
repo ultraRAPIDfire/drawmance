@@ -3,13 +3,15 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
-  background: #ccf0ed; /* Pale Blue background */
-  color: #2a65a3; /* Dark Blue text */
+  background: url('LOGIN.png') no-repeat center center fixed;
+  background-size: cover;
+  color: #2a65a3;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   min-height: 100vh;
 }
+
 
 /* Landing container */
 .landing-container {
