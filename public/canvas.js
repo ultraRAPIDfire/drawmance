@@ -11,10 +11,26 @@ let currentTool = 'brush';
 let canClear = true;
 let clearCooldown = 30;
 
+let drawingHistory = [];  // Store all drawing actions for replay on resize
+
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight - document.querySelector('.toolbar').offsetHeight;
+
+  // Redraw entire history after resizing
+  if (drawingHistory.length) {
+    drawingHistory.forEach((item) => {
+      if (item.text) {
+        ctx.fillStyle = item.color;
+        ctx.font = `${item.size * 5}px sans-serif`;
+        ctx.fillText(item.text, item.x, item.y);
+      } else if (item.from && item.to) {
+        drawLine(item.from, item.to, item.color, item.brushSize);
+      }
+    });
+  }
 }
+
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
@@ -38,6 +54,7 @@ clearBtn.addEventListener('click', () => {
   if (!canClear || !room) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   socket.emit('clear', room);
+  drawingHistory = []; // Clear local history on clear
   canClear = false;
   startClearCooldown();
 });
@@ -84,7 +101,9 @@ canvas.addEventListener('mousedown', (e) => {
       ctx.fillStyle = color;
       ctx.font = `${brushSize * 5}px sans-serif`;
       ctx.fillText(userText, x, y);
-      socket.emit('text', { room, x, y, text: userText, color, size: brushSize });
+      const textData = { room, x, y, text: userText, color, size: brushSize };
+      drawingHistory.push(textData); // Save to local history
+      socket.emit('text', textData);
     }
     currentTool = 'brush';
     return;
@@ -111,7 +130,10 @@ canvas.addEventListener('mousemove', (e) => {
   const strokeColor = currentTool === 'eraser' ? '#ffffff' : color;
 
   drawLine(prevPos, currentPos, strokeColor, brushSize);
-  socket.emit('draw', { room, from: prevPos, to: currentPos, color: strokeColor, brushSize });
+
+  const drawData = { room, from: prevPos, to: currentPos, color: strokeColor, brushSize };
+  drawingHistory.push(drawData); // Save to local history
+  socket.emit('draw', drawData);
 
   prevPos = currentPos;
 });
@@ -145,19 +167,24 @@ function initSocket() {
 
     socket.on('draw', (data) => {
       drawLine(data.from, data.to, data.color, data.brushSize);
+      drawingHistory.push(data); // Add incoming draw data to local history
     });
 
     socket.on('clear', () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawingHistory = []; // Clear local history when cleared
     });
 
     socket.on('text', (data) => {
       ctx.fillStyle = data.color;
       ctx.font = `${data.size * 5}px sans-serif`;
       ctx.fillText(data.text, data.x, data.y);
+      drawingHistory.push(data); // Add incoming text data to local history
     });
 
     socket.on('drawingHistory', (history) => {
+      drawingHistory = history; // store locally
+
       resizeCanvas(); // Ensure canvas is properly sized before replaying
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
