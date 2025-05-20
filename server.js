@@ -57,26 +57,25 @@ io.on('connection', (socket) => {
     if (roomData.has(room)) {
       const history = roomData.get(room);
       socket.emit('drawingHistory', history);
+    } else {
+      roomData.set(room, []);
     }
   });
 
   socket.on('draw', (data) => {
     const { room } = data;
 
-    // Save drawing data in memory
     if (!roomData.has(room)) {
       roomData.set(room, []);
     }
     roomData.get(room).push(data);
 
-    // Broadcast to everyone else in the room
     socket.to(room).emit('draw', data);
   });
 
   socket.on('text', (data) => {
     const { room } = data;
 
-    // Store text events if needed
     if (!roomData.has(room)) {
       roomData.set(room, []);
     }
@@ -87,13 +86,14 @@ io.on('connection', (socket) => {
 
   socket.on('clear', (room) => {
     // Clear room history
-    roomData.set(room, []);
-    socket.to(room).emit('clear');
+    roomData.set(room, []); // <-- Reset history on clear
+
+    // Emit to everyone INCLUDING sender so all clear
+    io.to(room).emit('clear');
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
-    // Optionally clean up empty rooms
   });
 });
 

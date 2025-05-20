@@ -1,7 +1,7 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let socket;
+let socket = io();  // <-- Moved socket initialization here (once per tab)
 let room = '';
 let drawing = false;
 let prevPos = null;
@@ -10,6 +10,7 @@ let brushSize = 3;
 let currentTool = 'brush';
 let canClear = true;
 let clearCooldown = 30;
+let listenersInitialized = false;  // <-- To prevent duplicate listeners
 
 // Resize canvas to fit window
 function resizeCanvas() {
@@ -38,7 +39,7 @@ brushSizeInput.addEventListener('input', (e) => {
 clearBtn.addEventListener('click', () => {
   if (!canClear || !room) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  socket.emit('clear', room);
+  socket.emit('clear', room);  // emit clear to server (server will broadcast)
   canClear = false;
   startClearCooldown();
 });
@@ -116,13 +117,14 @@ canvas.addEventListener('mousemove', (e) => {
   prevPos = currentPos;
 });
 
-// Function to initialize socket connection and join room
+// Function to initialize socket listeners and join room
 function initSocket() {
-  socket = io();
+  if (!room) return;
 
-  socket.on('connect', () => {
-    socket.emit('joinRoom', room);
-  });
+  socket.emit('joinRoom', room);
+
+  if (listenersInitialized) return; // prevent duplicate listeners
+  listenersInitialized = true;
 
   socket.on('draw', (data) => {
     drawLine(data.from, data.to, data.color, data.brushSize);
@@ -141,6 +143,7 @@ function initSocket() {
   socket.on('drawingHistory', (history) => {
     resizeCanvas(); // Ensure canvas is properly sized before replaying
 
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     history.forEach((item) => {
       if (item.text) {
         ctx.fillStyle = item.color;
@@ -163,7 +166,7 @@ function drawLine(from, to, strokeColor, size) {
   ctx.stroke();
 }
 
-// Expose initSocket and room to global scope for access from landing.js
+// Expose initSocket and room setter to global scope
 window.canvasApp = {
   setRoom: (roomCode) => {
     room = roomCode;
