@@ -1,52 +1,54 @@
-const landingScreen = document.getElementById('landingScreen');
-const drawingScreen = document.getElementById('drawingScreen');
+const socket = io();
 
+// DOM elements
+const landingScreen = document.getElementById('landingScreen');
+const drawingUI = document.getElementById('drawingUI');
 const quickPlayBtn = document.getElementById('quickPlayBtn');
 const generateCodeBtn = document.getElementById('generateCodeBtn');
 const joinRoomBtn = document.getElementById('joinRoomBtn');
-const joinRoomCodeInput = document.getElementById('joinRoomCode');
+const joinRoomCode = document.getElementById('joinRoomCode');
 
-let socket;
+let currentRoom = '';
 
-function enterRoom(roomCode) {
+// When user clicks Generate Code
+generateCodeBtn.addEventListener('click', () => {
+  const generatedCode = generateRoomCode();
+  currentRoom = generatedCode;
+  socket.emit('joinRoom', generatedCode);
+  transitionToDrawing(generatedCode);
+});
+
+// When user clicks Join Room
+joinRoomBtn.addEventListener('click', () => {
+  const code = joinRoomCode.value.trim();
+  if (code !== '') {
+    currentRoom = code;
+    socket.emit('joinRoom', code);
+    transitionToDrawing(code);
+  }
+});
+
+// When user clicks Quick Play
+quickPlayBtn.addEventListener('click', () => {
+  // In a real system, you'd implement a matchmaker. Here we'll generate a shared room name.
+  const quickRoom = 'quick-' + Math.floor(Math.random() * 100000);
+  currentRoom = quickRoom;
+  socket.emit('joinRoom', quickRoom);
+  transitionToDrawing(quickRoom);
+});
+
+function transitionToDrawing(code) {
   landingScreen.style.display = 'none';
-  drawingScreen.style.display = 'block';
-
-  // Initialize socket connection with room info
-  socket = io();
-
-  // Tell server to join room
-  socket.emit('joinRoom', roomCode);
-
-  // Pass socket to your existing canvas.js code (adjust canvas.js to accept external socket)
-  window.startDrawingApp(socket, roomCode);
+  drawingUI.style.display = 'flex';
+  console.log('Joined room:', code);
 }
 
-// Quick play: ask server to assign you to a random available room or create one
-quickPlayBtn.addEventListener('click', () => {
-  fetch('/api/quickplay')
-    .then(res => res.json())
-    .then(data => {
-      enterRoom(data.roomCode);
-    });
-});
-
-// Generate code: create a private room code on the server
-generateCodeBtn.addEventListener('click', () => {
-  fetch('/api/generateRoom')
-    .then(res => res.json())
-    .then(data => {
-      alert(`Your private room code is: ${data.roomCode}`);
-      enterRoom(data.roomCode);
-    });
-});
-
-// Join room by code
-joinRoomBtn.addEventListener('click', () => {
-  const roomCode = joinRoomCodeInput.value.trim();
-  if (!roomCode) {
-    alert('Please enter a room code.');
-    return;
+// Utility: Generate random 6-character room code
+function generateRoomCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  enterRoom(roomCode);
-});
+  return code;
+}
