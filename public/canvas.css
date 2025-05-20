@@ -83,3 +83,9 @@ body {
 #copyCodeBtn:hover {
   background: #574fd3;
 }
+
+#canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

@@ -66,6 +66,11 @@ function transitionToDrawing(code) {
     drawingUI.style.display = 'flex';
     console.log('Joined room:', code);
   
+    // ✅ Resize canvas immediately
+    if (window.resizeCanvas) {
+      window.resizeCanvas(); 
+    }
+  
     // Wait for canvasApp to be available and set the room
     const trySetRoom = () => {
       if (window.canvasApp && typeof window.canvasApp.setRoom === 'function') {
@@ -76,4 +81,4 @@ function transitionToDrawing(code) {
     };
   
     trySetRoom();
-  }  
+  }

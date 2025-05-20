@@ -218,3 +218,5 @@ function setRoom(roomCode) {
 window.canvasApp = {
   setRoom,
 };
+
+window.resizeCanvas = resizeCanvas; // Expose resizeCanvas to landing.js
