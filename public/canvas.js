@@ -116,14 +116,7 @@ canvas.addEventListener('mousemove', (e) => {
   prevPos = currentPos;
 });
 
-// Initialize socket after room is set
-room = localStorage.getItem('roomCode');
-if (room) {
-  initSocket();
-} else {
-  console.log('No room code found, drawing disabled.');
-}
-
+// Function to initialize socket connection and join room
 function initSocket() {
   socket = io();
 
@@ -144,9 +137,6 @@ function initSocket() {
     ctx.font = `${data.size * 5}px sans-serif`;
     ctx.fillText(data.text, data.x, data.y);
   });
-
-  // If you want history support, add here
-  // socket.on('init', (history) => {...});
 }
 
 function drawLine(from, to, strokeColor, size) {
@@ -158,3 +148,11 @@ function drawLine(from, to, strokeColor, size) {
   ctx.lineTo(to.x, to.y);
   ctx.stroke();
 }
+
+// Expose initSocket and room to global scope for access from landing.js
+window.canvasApp = {
+  setRoom: (roomCode) => {
+    room = roomCode;
+    initSocket();
+  }
+};
