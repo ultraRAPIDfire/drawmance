@@ -9,24 +9,28 @@
 <body>
 
   <!-- Landing screen -->
-  <div id="landingScreen">
-    <h1>Welcome to Drawmance</h1>
-    <button id="quickPlayBtn">Quick Play</button>
-    <button id="generateCodeBtn">Generate Code</button>
-    <div style="margin-top: 10px;">
-      <input type="text" id="joinRoomCode" placeholder="Enter room code" />
+  <div id="landingScreen" class="landing-container">
+    <h1>Welcome to <span style="color:#2d89ef;">Drawmance</span></h1>
+    
+    <div class="landing-buttons">
+      <button id="quickPlayBtn">🎮 Quick Play</button>
+      <button id="generateCodeBtn">🔐 Generate Room</button>
+    </div>
+
+    <div id="generatedCodeDisplay" style="display:none;">
+      <p>Your room code:</p>
+      <div class="code-box" id="roomCodeBox"></div>
+      <button id="copyCodeBtn">Copy Code</button>
+    </div>
+
+    <div class="join-room-section">
+      <input type="text" id="joinRoomCode" placeholder="Enter room code" maxlength="6" />
       <button id="joinRoomBtn">Join Room</button>
     </div>
   </div>
 
   <!-- Drawing UI (hidden initially) -->
   <div id="drawingUI" style="display:none;">
-    <div class="room-setup" style="display:none;">
-      <!-- Keeping your original room input hidden here, or can remove -->
-      <input type="text" id="roomInput" placeholder="Enter or generate room code" />
-      <button id="joinRoomBtn2">Join Room</button>
-    </div>
-
     <div class="toolbar">
       <label>
         Color:

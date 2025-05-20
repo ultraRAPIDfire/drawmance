@@ -1,66 +1,85 @@
-* {
-  box-sizing: border-box;
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f5f5f5;
+  color: #333;
 }
 
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f0f2f5;
+.landing-container {
+  text-align: center;
+  margin-top: 15vh;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  align-items: center;
+  gap: 20px;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  padding: 10px 20px;
+.landing-buttons button {
+  margin: 10px;
+  padding: 12px 20px;
+  font-size: 16px;
+  border: none;
   background: #2d89ef;
   color: white;
-  gap: 15px;
-  user-select: none;
-  flex-wrap: wrap;
-}
-
-.toolbar label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.toolbar input[type="range"] {
-  width: 100px;
-}
-
-button {
-  background: #555;
-  border: none;
-  color: white;
-  padding: 8px 15px;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
-  transition: background 0.3s ease;
+  transition: background 0.2s;
 }
 
-button:hover {
-  background: #444;
+.landing-buttons button:hover {
+  background: #1e70bf;
 }
 
-#clearBtn {
-  background: #f44336;
+.join-room-section {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
 }
 
-#clearBtn:hover {
-  background: #d32f2f;
+.join-room-section input {
+  padding: 10px;
+  font-size: 16px;
+  width: 180px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
-canvas {
-  flex-grow: 1;
-  display: block;
-  background: white;
-  cursor: crosshair;
-  width: 100%;
-  height: 100%;
+.join-room-section button {
+  padding: 10px 15px;
+  background: #28a745;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.join-room-section button:hover {
+  background: #218838;
+}
+
+.code-box {
+  font-size: 24px;
+  font-weight: bold;
+  background: #e0e0e0;
+  padding: 10px 20px;
+  border-radius: 5px;
+  display: inline-block;
+  margin: 10px 0;
+}
+
+#copyCodeBtn {
+  padding: 8px 16px;
+  background: #6c63ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#copyCodeBtn:hover {
+  background: #574fd3;
 }
