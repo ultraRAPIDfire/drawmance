@@ -1,7 +1,7 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let socket = io();  // <-- Moved socket initialization here (once per tab)
+let socket = null;
 let room = '';
 let drawing = false;
 let prevPos = null;
@@ -10,9 +10,7 @@ let brushSize = 3;
 let currentTool = 'brush';
 let canClear = true;
 let clearCooldown = 30;
-let listenersInitialized = false;  // <-- To prevent duplicate listeners
 
-// Resize canvas to fit window
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight - document.querySelector('.toolbar').offsetHeight;
@@ -39,7 +37,7 @@ brushSizeInput.addEventListener('input', (e) => {
 clearBtn.addEventListener('click', () => {
   if (!canClear || !room) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  socket.emit('clear', room);  // emit clear to server (server will broadcast)
+  socket.emit('clear', room);
   canClear = false;
   startClearCooldown();
 });
@@ -74,8 +72,9 @@ brushBtn.addEventListener('click', () => {
   eraserBtn.textContent = 'Eraser';
 });
 
+// Drawing logic: only allow drawing when room and socket are ready
 canvas.addEventListener('mousedown', (e) => {
-  if (!room) return;
+  if (!room || !socket) return;
 
   if (currentTool === 'text') {
     const x = e.offsetX;
@@ -106,7 +105,7 @@ canvas.addEventListener('mouseout', () => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!drawing || currentTool === 'text' || !room) return;
+  if (!drawing || currentTool === 'text' || !room || !socket) return;
 
   const currentPos = { x: e.offsetX, y: e.offsetY };
   const strokeColor = currentTool === 'eraser' ? '#ffffff' : color;
@@ -116,45 +115,6 @@ canvas.addEventListener('mousemove', (e) => {
 
   prevPos = currentPos;
 });
-
-// Function to initialize socket listeners and join room
-function initSocket() {
-  if (!room) return;
-
-  socket.emit('joinRoom', room);
-
-  if (listenersInitialized) return; // prevent duplicate listeners
-  listenersInitialized = true;
-
-  socket.on('draw', (data) => {
-    drawLine(data.from, data.to, data.color, data.brushSize);
-  });
-
-  socket.on('clear', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  });
-
-  socket.on('text', (data) => {
-    ctx.fillStyle = data.color;
-    ctx.font = `${data.size * 5}px sans-serif`;
-    ctx.fillText(data.text, data.x, data.y);
-  });
-
-  socket.on('drawingHistory', (history) => {
-    resizeCanvas(); // Ensure canvas is properly sized before replaying
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    history.forEach((item) => {
-      if (item.text) {
-        ctx.fillStyle = item.color;
-        ctx.font = `${item.size * 5}px sans-serif`;
-        ctx.fillText(item.text, item.x, item.y);
-      } else if (item.from && item.to) {
-        drawLine(item.from, item.to, item.color, item.brushSize);
-      }
-    });
-  });
-}
 
 function drawLine(from, to, strokeColor, size) {
   ctx.strokeStyle = strokeColor;
@@ -166,10 +126,66 @@ function drawLine(from, to, strokeColor, size) {
   ctx.stroke();
 }
 
-// Expose initSocket and room setter to global scope
-window.canvasApp = {
-  setRoom: (roomCode) => {
-    room = roomCode;
-    initSocket();
+let listenersInitialized = false;
+
+// Initialize socket connection and listeners once
+function initSocket() {
+  if (socket) return; // socket already initialized
+
+  socket = io();
+
+  socket.on('connect', () => {
+    if (room) {
+      socket.emit('joinRoom', room);
+    }
+  });
+
+  if (!listenersInitialized) {
+    listenersInitialized = true;
+
+    socket.on('draw', (data) => {
+      drawLine(data.from, data.to, data.color, data.brushSize);
+    });
+
+    socket.on('clear', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    socket.on('text', (data) => {
+      ctx.fillStyle = data.color;
+      ctx.font = `${data.size * 5}px sans-serif`;
+      ctx.fillText(data.text, data.x, data.y);
+    });
+
+    socket.on('drawingHistory', (history) => {
+      resizeCanvas(); // Ensure canvas is properly sized before replaying
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      history.forEach((item) => {
+        if (item.text) {
+          ctx.fillStyle = item.color;
+          ctx.font = `${item.size * 5}px sans-serif`;
+          ctx.fillText(item.text, item.x, item.y);
+        } else if (item.from && item.to) {
+          drawLine(item.from, item.to, item.color, item.brushSize);
+        }
+      });
+    });
   }
+}
+
+// Set room and join
+function setRoom(roomCode) {
+  room = roomCode;
+  if (!socket) {
+    initSocket();
+  } else {
+    socket.emit('joinRoom', room);
+  }
+}
+
+// Expose to global scope
+window.canvasApp = {
+  setRoom,
 };
