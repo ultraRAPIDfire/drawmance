@@ -10,20 +10,21 @@ const copyCodeBtn = document.getElementById('copyCodeBtn');
 
 let currentRoom = '';
 
-// Generate Room
+// Generate Room (only generate and show, no transition)
 generateCodeBtn.addEventListener('click', async () => {
   const res = await fetch('/api/generateRoom', { method: 'POST' });
   const data = await res.json();
   currentRoom = data.roomCode;
 
+  // Update display
   roomCodeBox.textContent = currentRoom;
   generatedCodeDisplay.style.display = 'block';
-
-  transitionToDrawing(currentRoom);
+  generateCodeBtn.textContent = currentRoom;
 });
 
 // Copy to clipboard
 copyCodeBtn.addEventListener('click', () => {
+  if (!currentRoom) return;
   navigator.clipboard.writeText(currentRoom);
   copyCodeBtn.textContent = 'Copied!';
   setTimeout(() => {
@@ -31,7 +32,7 @@ copyCodeBtn.addEventListener('click', () => {
   }, 2000);
 });
 
-// Quick Play
+// Quick Play (still auto-transitions)
 quickPlayBtn.addEventListener('click', async () => {
   const res = await fetch('/api/quickplay');
   const data = await res.json();
