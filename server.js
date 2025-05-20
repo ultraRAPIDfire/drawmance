@@ -86,10 +86,18 @@ io.on('connection', (socket) => {
 
   socket.on('clear', (room) => {
     // Clear room history
-    roomData.set(room, []); // <-- Reset history on clear
+    roomData.set(room, []);
 
     // Emit to everyone INCLUDING sender so all clear
     io.to(room).emit('clear');
+  });
+
+  // ✅ Handle request for drawing history (re-sync after reconnect or inactivity)
+  socket.on('requestHistory', (room) => {
+    if (roomData.has(room)) {
+      const history = roomData.get(room);
+      socket.emit('drawingHistory', history);
+    }
   });
 
   socket.on('disconnect', () => {

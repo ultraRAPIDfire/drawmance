@@ -158,8 +158,10 @@ function initSocket() {
   socket.on('connect', () => {
     if (room) {
       socket.emit('joinRoom', room);
+      socket.emit('requestHistory', room); // 🆕 Ask again on reconnect
     }
   });
+  
 
   if (!listenersInitialized) {
     listenersInitialized = true;
@@ -203,13 +205,15 @@ function initSocket() {
 
 function setRoom(roomCode) {
   room = roomCode;
-  historySynced = false; // Wait for history on new room
+  historySynced = false;
   if (!socket) {
     initSocket();
   } else {
     socket.emit('joinRoom', room);
+    socket.emit('requestHistory', room); // 🆕 Ask server for history
   }
 }
+
 
 window.canvasApp = {
   setRoom,
