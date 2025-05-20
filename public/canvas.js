@@ -9,18 +9,20 @@ let color = '#000000';
 let brushSize = 3;
 let currentTool = 'brush';
 let canClear = true;
-let clearCooldown = 30;
+const clearCooldown = 30;
 
 let drawingHistory = [];  // Store all drawing actions for replay on resize
 let historySynced = false; // Prevent drawing before sync is complete
 
+// Resize canvas and redraw history
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight - document.querySelector('.toolbar').offsetHeight;
 
-  // Redraw entire history after resizing
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   if (drawingHistory.length) {
-    drawingHistory.forEach((item) => {
+    drawingHistory.forEach(item => {
       if (item.text) {
         ctx.fillStyle = item.color;
         ctx.font = `${item.size * 5}px sans-serif`;
@@ -52,9 +54,10 @@ brushSizeInput.addEventListener('input', (e) => {
 
 clearBtn.addEventListener('click', () => {
   if (!canClear || !room) return;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   socket.emit('clear', room);
-  drawingHistory = []; // Clear local history on clear
+  drawingHistory = [];
   canClear = false;
   startClearCooldown();
 });
@@ -76,8 +79,13 @@ function startClearCooldown() {
 }
 
 eraserBtn.addEventListener('click', () => {
-  currentTool = currentTool === 'eraser' ? 'brush' : 'eraser';
-  eraserBtn.textContent = currentTool === 'eraser' ? 'Eraser (On)' : 'Eraser';
+  if (currentTool === 'eraser') {
+    currentTool = 'brush';
+    eraserBtn.textContent = 'Eraser';
+  } else {
+    currentTool = 'eraser';
+    eraserBtn.textContent = 'Eraser (On)';
+  }
 });
 
 textBtn.addEventListener('click', () => {
@@ -89,7 +97,7 @@ brushBtn.addEventListener('click', () => {
   eraserBtn.textContent = 'Eraser';
 });
 
-// Drawing logic: only allow drawing when room, socket, and sync are ready
+// Drawing logic
 canvas.addEventListener('mousedown', (e) => {
   if (!room || !socket || !historySynced) return;
 
@@ -158,10 +166,9 @@ function initSocket() {
   socket.on('connect', () => {
     if (room) {
       socket.emit('joinRoom', room);
-      socket.emit('requestHistory', room); // 🆕 Ask again on reconnect
+      socket.emit('requestHistory', room);
     }
   });
-  
 
   if (!listenersInitialized) {
     listenersInitialized = true;
@@ -185,7 +192,6 @@ function initSocket() {
 
     socket.on('drawingHistory', (history) => {
       drawingHistory = history;
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       drawingHistory.forEach((item) => {
@@ -198,7 +204,7 @@ function initSocket() {
         }
       });
 
-      historySynced = true; // ✅ History fully loaded
+      historySynced = true;
     });
   }
 }
@@ -210,13 +216,12 @@ function setRoom(roomCode) {
     initSocket();
   } else {
     socket.emit('joinRoom', room);
-    socket.emit('requestHistory', room); // 🆕 Ask server for history
+    socket.emit('requestHistory', room);
   }
 }
-
 
 window.canvasApp = {
   setRoom,
 };
 
-window.resizeCanvas = resizeCanvas; // Expose resizeCanvas to landing.js
+window.resizeCanvas = resizeCanvas;

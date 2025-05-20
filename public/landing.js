@@ -16,7 +16,6 @@ generateCodeBtn.addEventListener('click', async () => {
   const data = await res.json();
   currentRoom = data.roomCode;
 
-  // Update display
   roomCodeBox.textContent = currentRoom;
   generatedCodeDisplay.style.display = 'block';
   generateCodeBtn.textContent = currentRoom;
@@ -32,7 +31,7 @@ copyCodeBtn.addEventListener('click', () => {
   }, 2000);
 });
 
-// Quick Play (still auto-transitions)
+// Quick Play (create room and join)
 quickPlayBtn.addEventListener('click', async () => {
   const res = await fetch('/api/quickplay');
   const data = await res.json();
@@ -41,7 +40,7 @@ quickPlayBtn.addEventListener('click', async () => {
   transitionToDrawing(currentRoom);
 });
 
-// Join Room (with validation if room exists)
+// Join Room (with validation)
 joinRoomBtn.addEventListener('click', async () => {
   const code = joinRoomCode.value.trim().toUpperCase();
   if (!/^[A-Z0-9]{6}$/.test(code)) {
@@ -61,24 +60,23 @@ joinRoomBtn.addEventListener('click', async () => {
 });
 
 function transitionToDrawing(code) {
-    localStorage.setItem('roomCode', code);
-    landingScreen.style.display = 'none';
-    drawingUI.style.display = 'flex';
-    console.log('Joined room:', code);
-  
-    // ✅ Resize canvas immediately
-    if (window.resizeCanvas) {
-      window.resizeCanvas(); 
-    }
-  
-    // Wait for canvasApp to be available and set the room
-    const trySetRoom = () => {
-      if (window.canvasApp && typeof window.canvasApp.setRoom === 'function') {
-        window.canvasApp.setRoom(code);
-      } else {
-        setTimeout(trySetRoom, 50);
-      }
-    };
-  
-    trySetRoom();
+  localStorage.setItem('roomCode', code);
+  landingScreen.style.display = 'none';
+  drawingUI.style.display = 'flex';
+
+  // Resize canvas immediately
+  if (window.resizeCanvas) {
+    window.resizeCanvas();
   }
+
+  // Wait for canvasApp and set the room
+  const trySetRoom = () => {
+    if (window.canvasApp && typeof window.canvasApp.setRoom === 'function') {
+      window.canvasApp.setRoom(code);
+    } else {
+      setTimeout(trySetRoom, 50);
+    }
+  };
+
+  trySetRoom();
+}

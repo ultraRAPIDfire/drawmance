@@ -8,7 +8,7 @@ app.use(express.static('public'));
 app.use(express.json());
 
 const activeRooms = new Set();
-const roomData = new Map(); // Stores drawing history per room
+const roomData = new Map(); // Store drawing history per room
 
 // Generate random 6-character uppercase room code
 function generateRoomCode() {
@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
     socket.join(room);
     console.log(`Socket ${socket.id} joined room ${room}`);
 
-    // Send drawing history to the newly joined user
+    // Send drawing history to newly joined user
     if (roomData.has(room)) {
       const history = roomData.get(room);
       socket.emit('drawingHistory', history);
@@ -85,14 +85,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('clear', (room) => {
-    // Clear room history
     roomData.set(room, []);
 
-    // Emit to everyone INCLUDING sender so all clear
     io.to(room).emit('clear');
   });
 
-  // ✅ Handle request for drawing history (re-sync after reconnect or inactivity)
   socket.on('requestHistory', (room) => {
     if (roomData.has(room)) {
       const history = roomData.get(room);
