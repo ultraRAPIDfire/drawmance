@@ -2,14 +2,13 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
-
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 app.use(express.json());
 
 const activeRooms = new Set();
-const roomStates = {}; // Keeps drawing history per room
+const roomData = new Map(); // Stores drawing history per room
 
 // Generate random 6-character uppercase room code
 function generateRoomCode() {
@@ -42,7 +41,6 @@ app.get('/api/roomExists/:code', (req, res) => {
   res.json({ exists: activeRooms.has(code) });
 });
 
-// === SOCKET.IO ===
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -55,47 +53,47 @@ io.on('connection', (socket) => {
     socket.join(room);
     console.log(`Socket ${socket.id} joined room ${room}`);
 
-    // Send existing drawing history
-    if (roomStates[room]) {
-      socket.emit('syncCanvas', roomStates[room]);
+    // Send drawing history to the newly joined user
+    if (roomData.has(room)) {
+      const history = roomData.get(room);
+      socket.emit('drawingHistory', history);
     }
   });
 
   socket.on('draw', (data) => {
-    const { room, ...drawingData } = data;
+    const { room } = data;
 
-    // Save to room history
-    if (!roomStates[room]) {
-      roomStates[room] = [];
+    // Save drawing data in memory
+    if (!roomData.has(room)) {
+      roomData.set(room, []);
     }
-    roomStates[room].push(drawingData);
+    roomData.get(room).push(data);
 
-    // Send to other clients
+    // Broadcast to everyone else in the room
     socket.to(room).emit('draw', data);
   });
 
-  socket.on('clear', (room) => {
-    // Clear history
-    if (roomStates[room]) {
-      roomStates[room] = [];
-    }
-    socket.to(room).emit('clear');
-  });
-
   socket.on('text', (data) => {
-    const { room, ...textData } = data;
+    const { room } = data;
 
-    // Save to room history
-    if (!roomStates[room]) {
-      roomStates[room] = [];
+    // Store text events if needed
+    if (!roomData.has(room)) {
+      roomData.set(room, []);
     }
-    roomStates[room].push({ type: 'text', ...textData });
+    roomData.get(room).push(data);
 
     socket.to(room).emit('text', data);
   });
 
+  socket.on('clear', (room) => {
+    // Clear room history
+    roomData.set(room, []);
+    socket.to(room).emit('clear');
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    // Optionally clean up empty rooms
   });
 });
 

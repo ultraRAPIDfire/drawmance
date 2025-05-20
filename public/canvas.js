@@ -157,12 +157,22 @@ window.canvasApp = {
   }
 };
 
-socket.on('syncCanvas', (history) => {
+function drawFromData(data) {
+  drawLine(data.from, data.to, data.color, data.brushSize);
+}
+
+function drawText(data) {
+  ctx.fillStyle = data.color;
+  ctx.font = `${data.size * 5}px sans-serif`;
+  ctx.fillText(data.text, data.x, data.y);
+}
+
+socket.on('drawingHistory', (history) => {
   history.forEach((item) => {
-    if (item.type === 'text') {
-      drawText(item); // Your own drawText logic
+    if (item.text !== undefined) {
+      drawText(item);
     } else {
-      drawFromData(item); // Your own draw logic
+      drawFromData(item);
     }
   });
 });
