@@ -8,31 +8,47 @@
 </head>
 <body>
 
-  <div class="room-setup">
-    <input type="text" id="roomInput" placeholder="Enter or generate room code" />
-    <button id="joinRoomBtn">Join Room</button>
+  <!-- Landing screen -->
+  <div id="landingScreen">
+    <h1>Welcome to Drawmance</h1>
+    <button id="quickPlayBtn">Quick Play</button>
+    <button id="generateCodeBtn">Generate Code</button>
+    <div style="margin-top: 10px;">
+      <input type="text" id="joinRoomCode" placeholder="Enter room code" />
+      <button id="joinRoomBtn">Join Room</button>
+    </div>
   </div>
 
-  <div class="toolbar">
-    <label>
-      Color:
-      <input type="color" id="colorPicker" value="#000000" />
-    </label>
+  <!-- Drawing UI (hidden initially) -->
+  <div id="drawingUI" style="display:none;">
+    <div class="room-setup" style="display:none;">
+      <!-- Keeping your original room input hidden here, or can remove -->
+      <input type="text" id="roomInput" placeholder="Enter or generate room code" />
+      <button id="joinRoomBtn2">Join Room</button>
+    </div>
 
-    <label>
-      Brush Size:
-      <input type="range" id="brushSize" min="1" max="20" value="3" />
-    </label>
+    <div class="toolbar">
+      <label>
+        Color:
+        <input type="color" id="colorPicker" value="#000000" />
+      </label>
 
-    <button id="brushBtn">Brush</button>
-    <button id="eraserBtn">Eraser</button>
-    <button id="textBtn">Text</button>
-    <button id="clearBtn">Clear Canvas</button>
+      <label>
+        Brush Size:
+        <input type="range" id="brushSize" min="1" max="20" value="3" />
+      </label>
+
+      <button id="brushBtn">Brush</button>
+      <button id="eraserBtn">Eraser</button>
+      <button id="textBtn">Text</button>
+      <button id="clearBtn">Clear Canvas</button>
+    </div>
+    
+    <canvas id="canvas"></canvas>
   </div>
-  
-  <canvas id="canvas"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="landing.js"></script>
   <script src="canvas.js"></script>
 </body>
 </html>

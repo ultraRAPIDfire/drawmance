@@ -1,59 +1,68 @@
-const express = require("express");
+const express = require('express');
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http, {
-  cors: { origin: "*" }
-});
-
-app.use(express.static("public"));
-
-const rooms = {}; // To store drawing history per room
-
-io.on("connection", (socket) => {
-  let currentRoom = null;
-
-  socket.on("joinRoom", (room) => {
-    if (currentRoom) {
-      socket.leave(currentRoom);
-    }
-
-    currentRoom = room;
-    socket.join(room);
-
-    if (!rooms[room]) {
-      rooms[room] = [];
-    }
-
-    // Send existing history to newly joined user
-    socket.emit("init", rooms[room]);
-
-    console.log(`User joined room: ${room}`);
-  });
-
-  socket.on("draw", (data) => {
-    if (!data.room) return;
-    rooms[data.room].push({ type: "draw", data });
-    socket.to(data.room).emit("draw", data);
-  });
-
-  socket.on("clear", (room) => {
-    if (!room) return;
-    rooms[room] = [];
-    socket.to(room).emit("clear");
-  });
-
-  socket.on("text", (data) => {
-    if (!data.room) return;
-    rooms[data.room].push({ type: "text", data });
-    socket.to(data.room).emit("text", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-});
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
 const PORT = process.env.PORT || 3000;
+
+app.use(express.static('public'));
+app.use(express.json());
+
+const activeRooms = new Set();
+
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// API to generate private room code
+app.post('/api/generateRoom', (req, res) => {
+  let code;
+  do {
+    code = generateRoomCode();
+  } while (activeRooms.has(code));
+  activeRooms.add(code);
+  res.json({ roomCode: code });
+});
+
+// Quick play: find or create room with only 1 user
+app.get('/api/quickplay', (req, res) => {
+  // Find a room with 1 user
+  // For demo simplicity, just create new room each time
+  let code;
+  do {
+    code = generateRoomCode();
+  } while (activeRooms.has(code));
+  activeRooms.add(code);
+  res.json({ roomCode: code });
+});
+
+io.on('connection', (socket) => {
+  socket.on('joinRoom', (roomCode) => {
+    socket.join(roomCode);
+    console.log(`User joined room: ${roomCode}`);
+
+    // Notify others in room
+    socket.to(roomCode).emit('userJoined', socket.id);
+
+    // Add listeners for drawing, clear, text, etc., scoped to room
+    socket.on('draw', (data) => {
+      socket.to(roomCode).emit('draw', data);
+    });
+
+    socket.on('clear', () => {
+      socket.to(roomCode).emit('clear');
+    });
+
+    socket.on('text', (data) => {
+      socket.to(roomCode).emit('text', data);
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`User disconnected from room ${roomCode}`);
+    });
+  });
+});
+
 http.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
