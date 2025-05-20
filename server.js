@@ -9,6 +9,7 @@ app.use(express.static('public'));
 app.use(express.json());
 
 const activeRooms = new Set();
+const roomStates = {}; // Keeps drawing history per room
 
 // Generate random 6-character uppercase room code
 function generateRoomCode() {
@@ -41,35 +42,60 @@ app.get('/api/roomExists/:code', (req, res) => {
   res.json({ exists: activeRooms.has(code) });
 });
 
+// === SOCKET.IO ===
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('joinRoom', (room) => {
     if (!activeRooms.has(room)) {
       console.log(`Room ${room} does not exist. Rejecting join.`);
-      // Optionally, emit an error to client here
       return;
     }
+
     socket.join(room);
     console.log(`Socket ${socket.id} joined room ${room}`);
+
+    // Send existing drawing history
+    if (roomStates[room]) {
+      socket.emit('syncCanvas', roomStates[room]);
+    }
   });
 
   socket.on('draw', (data) => {
-    // Broadcast to everyone else in the room except sender
-    socket.to(data.room).emit('draw', data);
+    const { room, ...drawingData } = data;
+
+    // Save to room history
+    if (!roomStates[room]) {
+      roomStates[room] = [];
+    }
+    roomStates[room].push(drawingData);
+
+    // Send to other clients
+    socket.to(room).emit('draw', data);
   });
 
   socket.on('clear', (room) => {
+    // Clear history
+    if (roomStates[room]) {
+      roomStates[room] = [];
+    }
     socket.to(room).emit('clear');
   });
 
   socket.on('text', (data) => {
-    socket.to(data.room).emit('text', data);
+    const { room, ...textData } = data;
+
+    // Save to room history
+    if (!roomStates[room]) {
+      roomStates[room] = [];
+    }
+    roomStates[room].push({ type: 'text', ...textData });
+
+    socket.to(room).emit('text', data);
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
-    // Optionally handle removing empty rooms here
   });
 });
 

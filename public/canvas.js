@@ -156,3 +156,13 @@ window.canvasApp = {
     initSocket();
   }
 };
+
+socket.on('syncCanvas', (history) => {
+  history.forEach((item) => {
+    if (item.type === 'text') {
+      drawText(item); // Your own drawText logic
+    } else {
+      drawFromData(item); // Your own draw logic
+    }
+  });
+});
