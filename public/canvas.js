@@ -25,8 +25,7 @@ const brushSizeInput = document.getElementById('brushSize');
 const clearBtn = document.getElementById('clearBtn');
 const eraserBtn = document.getElementById('eraserBtn');
 const textBtn = document.getElementById('textBtn');
-const roomInput = document.getElementById('roomInput');
-const joinRoomBtn = document.getElementById('joinRoomBtn');
+const brushBtn = document.getElementById('brushBtn');
 
 colorPicker.addEventListener('input', (e) => {
   color = e.target.value;
@@ -67,6 +66,11 @@ eraserBtn.addEventListener('click', () => {
 
 textBtn.addEventListener('click', () => {
   currentTool = 'text';
+});
+
+brushBtn.addEventListener('click', () => {
+  currentTool = 'brush';
+  eraserBtn.textContent = 'Eraser';
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -112,18 +116,13 @@ canvas.addEventListener('mousemove', (e) => {
   prevPos = currentPos;
 });
 
-// Join or create a room
-joinRoomBtn.addEventListener('click', () => {
-  const input = roomInput.value.trim();
-  room = input || Math.random().toString(36).substr(2, 6).toUpperCase();
-  if (!input) {
-    alert(`Generated room code: ${room}`);
-    roomInput.value = room;
-  }
+// Initialize socket after room is set
+room = localStorage.getItem('roomCode');
+if (room) {
   initSocket();
-  joinRoomBtn.disabled = true;
-  roomInput.disabled = true;
-});
+} else {
+  console.log('No room code found, drawing disabled.');
+}
 
 function initSocket() {
   socket = io();
@@ -146,17 +145,8 @@ function initSocket() {
     ctx.fillText(data.text, data.x, data.y);
   });
 
-  socket.on('init', (history) => {
-    history.forEach((entry) => {
-      if (entry.type === 'draw') {
-        drawLine(entry.data.from, entry.data.to, entry.data.color, entry.data.brushSize);
-      } else if (entry.type === 'text') {
-        ctx.fillStyle = entry.data.color;
-        ctx.font = `${entry.data.size * 5}px sans-serif`;
-        ctx.fillText(entry.data.text, entry.data.x, entry.data.y);
-      }
-    });
-  });
+  // If you want history support, add here
+  // socket.on('init', (history) => {...});
 }
 
 function drawLine(from, to, strokeColor, size) {

@@ -1,5 +1,3 @@
-const socket = io();
-
 const landingScreen = document.getElementById('landingScreen');
 const drawingUI = document.getElementById('drawingUI');
 const quickPlayBtn = document.getElementById('quickPlayBtn');
@@ -21,7 +19,6 @@ generateCodeBtn.addEventListener('click', async () => {
   roomCodeBox.textContent = currentRoom;
   generatedCodeDisplay.style.display = 'block';
 
-  socket.emit('joinRoom', currentRoom);
   transitionToDrawing(currentRoom);
 });
 
@@ -40,23 +37,30 @@ quickPlayBtn.addEventListener('click', async () => {
   const data = await res.json();
   currentRoom = data.roomCode;
 
-  socket.emit('joinRoom', currentRoom);
   transitionToDrawing(currentRoom);
 });
 
-// Join Room
-joinRoomBtn.addEventListener('click', () => {
+// Join Room (with validation if room exists)
+joinRoomBtn.addEventListener('click', async () => {
   const code = joinRoomCode.value.trim().toUpperCase();
-  if (code && /^[A-Z0-9]{6}$/.test(code)) {
+  if (!/^[A-Z0-9]{6}$/.test(code)) {
+    alert('Please enter a valid 6-character room code.');
+    return;
+  }
+
+  const res = await fetch(`/api/roomExists/${code}`);
+  const data = await res.json();
+
+  if (data.exists) {
     currentRoom = code;
-    socket.emit('joinRoom', code);
     transitionToDrawing(code);
   } else {
-    alert('Please enter a valid 6-character room code.');
+    alert('Room code not found. Please try again.');
   }
 });
 
 function transitionToDrawing(code) {
+  localStorage.setItem('roomCode', code);
   landingScreen.style.display = 'none';
   drawingUI.style.display = 'flex';
   console.log('Joined room:', code);

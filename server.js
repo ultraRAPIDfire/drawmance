@@ -10,11 +10,12 @@ app.use(express.json());
 
 const activeRooms = new Set();
 
+// Generate random 6-character uppercase room code
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// API to generate a private room code
+// API: Generate a new room code
 app.post('/api/generateRoom', (req, res) => {
   let code;
   do {
@@ -24,7 +25,7 @@ app.post('/api/generateRoom', (req, res) => {
   res.json({ roomCode: code });
 });
 
-// Quick play: find or create room
+// API: Quick play (create a new room)
 app.get('/api/quickplay', (req, res) => {
   let code;
   do {
@@ -34,39 +35,44 @@ app.get('/api/quickplay', (req, res) => {
   res.json({ roomCode: code });
 });
 
-// Socket.IO logic
+// API: Check if room exists
+app.get('/api/roomExists/:code', (req, res) => {
+  const code = req.params.code.toUpperCase();
+  res.json({ exists: activeRooms.has(code) });
+});
+
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  console.log('User connected:', socket.id);
 
-  socket.on('joinRoom', (roomCode) => {
-    socket.join(roomCode);
-    console.log(`User joined room: ${roomCode}`);
+  socket.on('joinRoom', (room) => {
+    if (!activeRooms.has(room)) {
+      console.log(`Room ${room} does not exist. Rejecting join.`);
+      // Optionally, emit an error to client here
+      return;
+    }
+    socket.join(room);
+    console.log(`Socket ${socket.id} joined room ${room}`);
+  });
 
-    // Notify others in room
-    socket.to(roomCode).emit('userJoined', socket.id);
+  socket.on('draw', (data) => {
+    // Broadcast to everyone else in the room except sender
+    socket.to(data.room).emit('draw', data);
+  });
 
-    // Handle drawing
-    socket.on('draw', (data) => {
-      socket.to(roomCode).emit('draw', data);
-    });
+  socket.on('clear', (room) => {
+    socket.to(room).emit('clear');
+  });
 
-    // Handle canvas clearing
-    socket.on('clear', () => {
-      socket.to(roomCode).emit('clear');
-    });
+  socket.on('text', (data) => {
+    socket.to(data.room).emit('text', data);
+  });
 
-    // Handle text insertion
-    socket.on('text', (data) => {
-      socket.to(roomCode).emit('text', data);
-    });
-
-    socket.on('disconnect', () => {
-      console.log(`User disconnected from room ${roomCode}`);
-    });
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    // Optionally handle removing empty rooms here
   });
 });
 
-// Start server
 http.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
