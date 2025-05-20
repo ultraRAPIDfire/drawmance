@@ -61,8 +61,19 @@ joinRoomBtn.addEventListener('click', async () => {
 });
 
 function transitionToDrawing(code) {
-  localStorage.setItem('roomCode', code);
-  landingScreen.style.display = 'none';
-  drawingUI.style.display = 'flex';
-  console.log('Joined room:', code);
-}
+    localStorage.setItem('roomCode', code);
+    landingScreen.style.display = 'none';
+    drawingUI.style.display = 'flex';
+    console.log('Joined room:', code);
+  
+    // Wait for canvasApp to be available and set the room
+    const trySetRoom = () => {
+      if (window.canvasApp && typeof window.canvasApp.setRoom === 'function') {
+        window.canvasApp.setRoom(code);
+      } else {
+        setTimeout(trySetRoom, 50);
+      }
+    };
+  
+    trySetRoom();
+  }  
