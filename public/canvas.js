@@ -137,6 +137,20 @@ function initSocket() {
     ctx.font = `${data.size * 5}px sans-serif`;
     ctx.fillText(data.text, data.x, data.y);
   });
+
+  socket.on('drawingHistory', (history) => {
+    resizeCanvas(); // Ensure canvas is properly sized before replaying
+
+    history.forEach((item) => {
+      if (item.text) {
+        ctx.fillStyle = item.color;
+        ctx.font = `${item.size * 5}px sans-serif`;
+        ctx.fillText(item.text, item.x, item.y);
+      } else if (item.from && item.to) {
+        drawLine(item.from, item.to, item.color, item.brushSize);
+      }
+    });
+  });
 }
 
 function drawLine(from, to, strokeColor, size) {
@@ -156,27 +170,3 @@ window.canvasApp = {
     initSocket();
   }
 };
-
-function drawFromData(data) {
-  drawLine(data.from, data.to, data.color, data.brushSize);
-}
-
-function drawText(data) {
-  ctx.fillStyle = data.color;
-  ctx.font = `${data.size * 5}px sans-serif`;
-  ctx.fillText(data.text, data.x, data.y);
-}
-
-socket.on('drawingHistory', (history) => {
-  history.forEach((item) => {
-    if (item.text) {
-      // It's a text item
-      ctx.fillStyle = item.color;
-      ctx.font = `${item.size * 5}px sans-serif`;
-      ctx.fillText(item.text, item.x, item.y);
-    } else if (item.from && item.to) {
-      // It's a draw line
-      drawLine(item.from, item.to, item.color, item.brushSize);
-    }
-  });
-});
