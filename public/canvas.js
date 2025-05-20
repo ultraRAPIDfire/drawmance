@@ -12,6 +12,7 @@ let canClear = true;
 let clearCooldown = 30;
 
 let drawingHistory = [];  // Store all drawing actions for replay on resize
+let historySynced = false; // Prevent drawing before sync is complete
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -32,7 +33,6 @@ function resizeCanvas() {
 }
 
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
 // Toolbar elements
 const colorPicker = document.getElementById('colorPicker');
@@ -89,9 +89,9 @@ brushBtn.addEventListener('click', () => {
   eraserBtn.textContent = 'Eraser';
 });
 
-// Drawing logic: only allow drawing when room and socket are ready
+// Drawing logic: only allow drawing when room, socket, and sync are ready
 canvas.addEventListener('mousedown', (e) => {
-  if (!room || !socket) return;
+  if (!room || !socket || !historySynced) return;
 
   if (currentTool === 'text') {
     const x = e.offsetX;
@@ -102,7 +102,7 @@ canvas.addEventListener('mousedown', (e) => {
       ctx.font = `${brushSize * 5}px sans-serif`;
       ctx.fillText(userText, x, y);
       const textData = { room, x, y, text: userText, color, size: brushSize };
-      drawingHistory.push(textData); // Save to local history
+      drawingHistory.push(textData);
       socket.emit('text', textData);
     }
     currentTool = 'brush';
@@ -124,7 +124,7 @@ canvas.addEventListener('mouseout', () => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!drawing || currentTool === 'text' || !room || !socket) return;
+  if (!drawing || currentTool === 'text' || !room || !socket || !historySynced) return;
 
   const currentPos = { x: e.offsetX, y: e.offsetY };
   const strokeColor = currentTool === 'eraser' ? '#ffffff' : color;
@@ -132,7 +132,7 @@ canvas.addEventListener('mousemove', (e) => {
   drawLine(prevPos, currentPos, strokeColor, brushSize);
 
   const drawData = { room, from: prevPos, to: currentPos, color: strokeColor, brushSize };
-  drawingHistory.push(drawData); // Save to local history
+  drawingHistory.push(drawData);
   socket.emit('draw', drawData);
 
   prevPos = currentPos;
@@ -150,9 +150,8 @@ function drawLine(from, to, strokeColor, size) {
 
 let listenersInitialized = false;
 
-// Initialize socket connection and listeners once
 function initSocket() {
-  if (socket) return; // socket already initialized
+  if (socket) return;
 
   socket = io();
 
@@ -167,29 +166,27 @@ function initSocket() {
 
     socket.on('draw', (data) => {
       drawLine(data.from, data.to, data.color, data.brushSize);
-      drawingHistory.push(data); // Add incoming draw data to local history
+      drawingHistory.push(data);
     });
 
     socket.on('clear', () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawingHistory = []; // Clear local history when cleared
+      drawingHistory = [];
     });
 
     socket.on('text', (data) => {
       ctx.fillStyle = data.color;
       ctx.font = `${data.size * 5}px sans-serif`;
       ctx.fillText(data.text, data.x, data.y);
-      drawingHistory.push(data); // Add incoming text data to local history
+      drawingHistory.push(data);
     });
 
     socket.on('drawingHistory', (history) => {
-      drawingHistory = history; // store locally
-
-      resizeCanvas(); // Ensure canvas is properly sized before replaying
+      drawingHistory = history;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      history.forEach((item) => {
+      drawingHistory.forEach((item) => {
         if (item.text) {
           ctx.fillStyle = item.color;
           ctx.font = `${item.size * 5}px sans-serif`;
@@ -198,13 +195,15 @@ function initSocket() {
           drawLine(item.from, item.to, item.color, item.brushSize);
         }
       });
+
+      historySynced = true; // ✅ History fully loaded
     });
   }
 }
 
-// Set room and join
 function setRoom(roomCode) {
   room = roomCode;
+  historySynced = false; // Wait for history on new room
   if (!socket) {
     initSocket();
   } else {
@@ -212,7 +211,6 @@ function setRoom(roomCode) {
   }
 }
 
-// Expose to global scope
 window.canvasApp = {
   setRoom,
 };
