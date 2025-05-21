@@ -37,6 +37,7 @@ quickPlayBtn.addEventListener('click', async () => {
   const data = await res.json();
   currentRoom = data.roomCode;
 
+  updateURL(currentRoom);
   transitionToDrawing(currentRoom);
 });
 
@@ -53,23 +54,23 @@ joinRoomBtn.addEventListener('click', async () => {
 
   if (data.exists) {
     currentRoom = code;
+    updateURL(currentRoom);
     transitionToDrawing(code);
   } else {
     alert('Room code not found. Please try again.');
   }
 });
 
+// Transitions UI and initializes canvasApp
 function transitionToDrawing(code) {
   localStorage.setItem('roomCode', code);
   landingScreen.style.display = 'none';
   drawingUI.style.display = 'flex';
 
-  // Resize canvas immediately
   if (window.resizeCanvas) {
     window.resizeCanvas();
   }
 
-  // Wait for canvasApp and set the room
   const trySetRoom = () => {
     if (window.canvasApp && typeof window.canvasApp.setRoom === 'function') {
       window.canvasApp.setRoom(code);
@@ -80,3 +81,18 @@ function transitionToDrawing(code) {
 
   trySetRoom();
 }
+
+// Push room code to URL bar
+function updateURL(code) {
+  window.history.pushState({}, '', `/${code}`);
+}
+
+// Auto-join from URL if path contains valid room code
+window.addEventListener('DOMContentLoaded', () => {
+  const match = window.location.pathname.match(/^\/([A-Z0-9]{6})$/i);
+  if (match) {
+    const code = match[1].toUpperCase();
+    joinRoomCode.value = code; // Optional: show in input
+    joinRoomBtn.click(); // Simulate join
+  }
+});
