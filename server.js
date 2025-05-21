@@ -5,7 +5,8 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static('public'));
+// Serve static files from 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 const activeRooms = new Set();
@@ -55,10 +56,8 @@ io.on('connection', (socket) => {
     socket.join(room);
     console.log(`Socket ${socket.id} joined room ${room}`);
 
-    // Send drawing history to the newly joined user
     if (roomData.has(room)) {
-      const history = roomData.get(room);
-      socket.emit('drawingHistory', history);
+      socket.emit('drawingHistory', roomData.get(room));
     } else {
       roomData.set(room, []);
     }
@@ -66,23 +65,15 @@ io.on('connection', (socket) => {
 
   socket.on('draw', (data) => {
     const { room } = data;
-
-    if (!roomData.has(room)) {
-      roomData.set(room, []);
-    }
+    if (!roomData.has(room)) roomData.set(room, []);
     roomData.get(room).push(data);
-
     socket.to(room).emit('draw', data);
   });
 
   socket.on('text', (data) => {
     const { room } = data;
-
-    if (!roomData.has(room)) {
-      roomData.set(room, []);
-    }
+    if (!roomData.has(room)) roomData.set(room, []);
     roomData.get(room).push(data);
-
     socket.to(room).emit('text', data);
   });
 
@@ -93,8 +84,7 @@ io.on('connection', (socket) => {
 
   socket.on('requestHistory', (room) => {
     if (roomData.has(room)) {
-      const history = roomData.get(room);
-      socket.emit('drawingHistory', history);
+      socket.emit('drawingHistory', roomData.get(room));
     }
   });
 
@@ -103,7 +93,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ Catch-all route for client-side routing (e.g. /4FUB5T)
+// Catch-all route for client-side routing support (important for /ROOMCODE URLs)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
