@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path'); // Required for serving files outside 'public'
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
@@ -6,6 +7,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 app.use(express.json());
+
+// Serve index.html from the root directory
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 const activeRooms = new Set();
 const roomData = new Map(); // Store drawing history per room
@@ -20,8 +26,8 @@ app.post('/api/generateRoom', (req, res) => {
   let code;
   do {
     code = generateRoomCode();
-  } while (activeRooms.has(code));
-  activeRooms.add(code);
+  } while (activeRooms.has(code)); 
+  activeRooms.add(code); 
   res.json({ roomCode: code });
 });
 
