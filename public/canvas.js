@@ -94,7 +94,6 @@ eraserBtn.addEventListener('click', () => {
     currentTool = 'eraser';
     eraserBtn.textContent = 'Eraser (On)';
   }
-  // Reset shape tool UI
   deactivateShapeButtons();
 });
 
@@ -110,11 +109,9 @@ brushBtn.addEventListener('click', () => {
   deactivateShapeButtons();
 });
 
-// Shape buttons event listeners
 shapeButtons.forEach(btn => {
   btn.addEventListener('click', () => {
     if (currentTool === btn.dataset.tool) {
-      // Toggle off shape tool if clicked again
       currentTool = 'brush';
       deactivateShapeButtons();
     } else {
@@ -151,7 +148,7 @@ canvas.addEventListener('mousedown', (e) => {
       drawingHistory.push(textData);
       socket.emit('text', textData);
     }
-    currentTool = 'brush'; // Reset to brush after text input
+    currentTool = 'brush';
     return;
   }
 
@@ -177,7 +174,7 @@ canvas.addEventListener('mouseup', (e) => {
     }
     isDrawingShape = false;
     shapeStartPos = null;
-    currentTool = 'brush';  // Reset tool after shape drawn
+    currentTool = 'brush';
     deactivateShapeButtons();
     return;
   }
@@ -208,76 +205,11 @@ canvas.addEventListener('mousemove', (e) => {
 
     prevPos = currentPos;
   }
-
-  // Optional: implement shape preview during drawing here if desired
 });
 
-// Helper to check if tool is shape tool
-function isShapeTool(tool) {
-  return ['line', 'rect', 'circle', 'arrow', 'star', 'heart', 'polygon'].includes(tool);
-}
-
-function createShapeData(tool, start, end) {
-  const shapeBase = {
-    room,
-    shape: tool,
-    color,
-    brushSize,
-  };
-
-  switch (tool) {
-    case 'line':
-      return {
-        ...shapeBase,
-        from: start,
-        to: end
-      };
-
-    case 'rect':
-      return {
-        ...shapeBase,
-        x: Math.min(start.x, end.x),
-        y: Math.min(start.y, end.y),
-        width: Math.abs(end.x - start.x),
-        height: Math.abs(end.y - start.y)
-      };
-
-    case 'circle': {
-      const radius = Math.hypot(end.x - start.x, end.y - start.y);
-      return {
-        ...shapeBase,
-        x: start.x,
-        y: start.y,
-        radius
-      };
-    }
-
-    // For arrow, star, heart, polygon you can add minimal implementations or placeholders for now
-    case 'arrow':
-      return {
-        ...shapeBase,
-        from: start,
-        to: end
-      };
-
-    case 'star':
-    case 'heart':
-    case 'polygon':
-      return {
-        ...shapeBase,
-        x: start.x,
-        y: start.y,
-        endX: end.x,
-        endY: end.y
-      };
-
-    default:
-      return null;
-  }
-}
-
-function drawLine(from, to, color, size) {
-  ctx.strokeStyle = color;
+// Draw a line segment
+function drawLine(from, to, strokeColor, size) {
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = size;
   ctx.lineCap = 'round';
 
@@ -287,83 +219,93 @@ function drawLine(from, to, color, size) {
   ctx.stroke();
 }
 
-function drawShape(shapeData, emit = true) {
+// Draw shapes based on type
+function drawShape(shapeData, isPreview) {
   ctx.strokeStyle = shapeData.color;
-  ctx.lineWidth = shapeData.brushSize;
   ctx.fillStyle = shapeData.color;
+  ctx.lineWidth = shapeData.brushSize;
+  ctx.lineCap = 'round';
 
   switch (shapeData.shape) {
     case 'line':
-      drawLine(shapeData.from, shapeData.to, shapeData.color, shapeData.brushSize);
+      ctx.beginPath();
+      ctx.moveTo(shapeData.from.x, shapeData.from.y);
+      ctx.lineTo(shapeData.to.x, shapeData.to.y);
+      ctx.stroke();
       break;
 
     case 'rect':
+      ctx.beginPath();
       ctx.strokeRect(shapeData.x, shapeData.y, shapeData.width, shapeData.height);
       break;
 
-    case 'circle':
+    case 'circle': {
+      const radius = Math.hypot(shapeData.x2 - shapeData.x, shapeData.y2 - shapeData.y);
       ctx.beginPath();
-      ctx.arc(shapeData.x, shapeData.y, shapeData.radius, 0, 2 * Math.PI);
+      ctx.arc(shapeData.x, shapeData.y, radius, 0, Math.PI * 2);
       ctx.stroke();
       break;
+    }
 
     case 'arrow':
       drawArrow(shapeData.from, shapeData.to, shapeData.color, shapeData.brushSize);
       break;
 
     case 'star':
-      drawStar(shapeData.x, shapeData.y, shapeData.endX, shapeData.endY, shapeData.color, shapeData.brushSize);
+      drawStar(shapeData.x, shapeData.y, shapeData.radius, shapeData.color, shapeData.brushSize);
       break;
 
     case 'heart':
-      drawHeart(shapeData.x, shapeData.y, shapeData.endX, shapeData.endY, shapeData.color, shapeData.brushSize);
+      drawHeart(shapeData.x, shapeData.y, shapeData.size, shapeData.color, shapeData.brushSize);
       break;
 
     case 'polygon':
-      drawPolygon(shapeData.x, shapeData.y, shapeData.endX, shapeData.endY, shapeData.color, shapeData.brushSize);
+      drawPolygon(shapeData.x, shapeData.y, shapeData.radius, shapeData.sides || 5, shapeData.color, shapeData.brushSize);
+      break;
+
+    default:
       break;
   }
 }
 
+// Helpers for drawing shapes
 function drawArrow(from, to, color, size) {
+  const headlen = 15;
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+
   ctx.strokeStyle = color;
   ctx.lineWidth = size;
-
-  const headLength = 10;
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const angle = Math.atan2(dy, dx);
-
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
   ctx.lineTo(to.x, to.y);
-  ctx.stroke();
 
-  ctx.beginPath();
+  ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6),
+             to.y - headlen * Math.sin(angle - Math.PI / 6));
+
   ctx.moveTo(to.x, to.y);
-  ctx.lineTo(to.x - headLength * Math.cos(angle - Math.PI / 6), to.y - headLength * Math.sin(angle - Math.PI / 6));
-  ctx.lineTo(to.x - headLength * Math.cos(angle + Math.PI / 6), to.y - headLength * Math.sin(angle + Math.PI / 6));
-  ctx.lineTo(to.x, to.y);
-  ctx.fillStyle = color;
-  ctx.fill();
+
+  ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6),
+             to.y - headlen * Math.sin(angle + Math.PI / 6));
+  ctx.stroke();
 }
 
-function drawStar(x1, y1, x2, y2, color, size) {
-  const cx = (x1 + x2) / 2;
-  const cy = (y1 + y2) / 2;
+function drawStar(cx, cy, outerRadius, color, size) {
   const spikes = 5;
-  const outerRadius = Math.abs(x2 - x1) / 2;
-  const innerRadius = outerRadius / 2.5;
+  const innerRadius = outerRadius / 2;
 
   let rot = Math.PI / 2 * 3;
-  let step = Math.PI / spikes;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
 
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
   ctx.beginPath();
   ctx.moveTo(cx, cy - outerRadius);
 
   for (let i = 0; i < spikes; i++) {
-    let x = cx + Math.cos(rot) * outerRadius;
-    let y = cy + Math.sin(rot) * outerRadius;
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
     ctx.lineTo(x, y);
     rot += step;
 
@@ -372,92 +314,164 @@ function drawStar(x1, y1, x2, y2, color, size) {
     ctx.lineTo(x, y);
     rot += step;
   }
+
   ctx.lineTo(cx, cy - outerRadius);
   ctx.closePath();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = size;
   ctx.stroke();
 }
 
-function drawHeart(x1, y1, x2, y2, color, size) {
-  const x = (x1 + x2) / 2;
-  const y = (y1 + y2) / 2;
-  const width = Math.abs(x2 - x1);
-  const height = Math.abs(y2 - y1);
+function drawHeart(x, y, size, color, lineWidth) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
 
   ctx.beginPath();
-  ctx.moveTo(x, y + height / 4);
-  ctx.bezierCurveTo(x, y, x - width / 2, y, x - width / 2, y + height / 4);
-  ctx.bezierCurveTo(x - width / 2, y + height / 2, x, y + height / 1.5, x, y + height);
-  ctx.bezierCurveTo(x, y + height / 1.5, x + width / 2, y + height / 2, x + width / 2, y + height / 4);
-  ctx.bezierCurveTo(x + width / 2, y, x, y, x, y + height / 4);
+  const topCurveHeight = size * 0.3;
+  ctx.moveTo(x, y + topCurveHeight);
+  // left top curve
+  ctx.bezierCurveTo(
+    x, y,
+    x - size / 2, y,
+    x - size / 2, y + topCurveHeight
+  );
+  // left bottom curve
+  ctx.bezierCurveTo(
+    x - size / 2, y + (size + topCurveHeight) / 2,
+    x, y + (size + topCurveHeight) / 2,
+    x, y + size
+  );
+  // right bottom curve
+  ctx.bezierCurveTo(
+    x, y + (size + topCurveHeight) / 2,
+    x + size / 2, y + (size + topCurveHeight) / 2,
+    x + size / 2, y + topCurveHeight
+  );
+  // right top curve
+  ctx.bezierCurveTo(
+    x + size / 2, y,
+    x, y,
+    x, y + topCurveHeight
+  );
   ctx.closePath();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = size;
   ctx.stroke();
 }
 
-function drawPolygon(x1, y1, x2, y2, color, size) {
-  const sides = 6;
-  const cx = (x1 + x2) / 2;
-  const cy = (y1 + y2) / 2;
-  const radius = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 2;
+function drawPolygon(cx, cy, radius, sides, color, lineWidth) {
+  if (sides < 3) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+
+  const step = (2 * Math.PI) / sides;
+  let angle = -Math.PI / 2;
 
   ctx.beginPath();
-  for (let i = 0; i <= sides; i++) {
-    const angle = i * 2 * Math.PI / sides - Math.PI / 2;
-    const x = cx + radius * Math.cos(angle);
-    const y = cy + radius * Math.sin(angle);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  ctx.moveTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+
+  for (let i = 1; i < sides; i++) {
+    angle += step;
+    ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
   }
   ctx.closePath();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = size;
   ctx.stroke();
 }
 
-// Socket.io connection and event handlers
-function connectSocket(roomName) {
-  if (socket) socket.disconnect();
+// Shape data creator helper
+function createShapeData(tool, start, end) {
+  switch (tool) {
+    case 'line':
+      return { room, shape: 'line', from: start, to: end, color, brushSize };
+    case 'rect':
+      return {
+        room,
+        shape: 'rect',
+        x: Math.min(start.x, end.x),
+        y: Math.min(start.y, end.y),
+        width: Math.abs(end.x - start.x),
+        height: Math.abs(end.y - start.y),
+        color,
+        brushSize
+      };
+    case 'circle':
+      return {
+        room,
+        shape: 'circle',
+        x: start.x,
+        y: start.y,
+        x2: end.x,
+        y2: end.y,
+        color,
+        brushSize
+      };
+    case 'arrow':
+      return { room, shape: 'arrow', from: start, to: end, color, brushSize };
+    case 'star':
+      const radiusStar = Math.hypot(end.x - start.x, end.y - start.y);
+      return { room, shape: 'star', x: start.x, y: start.y, radius: radiusStar, color, brushSize };
+    case 'heart':
+      const sizeHeart = Math.abs(end.x - start.x);
+      return { room, shape: 'heart', x: start.x, y: start.y, size: sizeHeart, color, brushSize };
+    case 'polygon':
+      const radiusPoly = Math.hypot(end.x - start.x, end.y - start.y);
+      const sides = 6; // fixed 6-sided polygon, can be customized
+      return { room, shape: 'polygon', x: start.x, y: start.y, radius: radiusPoly, sides, color, brushSize };
+    default:
+      return null;
+  }
+}
 
+function isShapeTool(tool) {
+  return ['line', 'rect', 'circle', 'arrow', 'star', 'heart', 'polygon'].includes(tool);
+}
+
+// --- Socket.io setup and handlers ---
+
+function connectSocket(roomCode) {
   socket = io();
 
-  socket.on('connect', () => {
-    room = roomName;
-    socket.emit('joinRoom', room);
+  room = roomCode.toUpperCase();
 
-    socket.on('drawingHistory', (history) => {
-      drawingHistory = history || [];
-      historySynced = true;
-      resizeCanvas();
-    });
+  socket.emit('joinRoom', room);
 
-    socket.on('draw', (data) => {
-      drawingHistory.push(data);
-      drawLine(data.from, data.to, data.color, data.brushSize);
+  socket.on('drawingHistory', (history) => {
+    drawingHistory = history || [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawingHistory.forEach(item => {
+      if (item.text) {
+        ctx.fillStyle = item.color;
+        ctx.font = `${item.size * 5}px sans-serif`;
+        ctx.fillText(item.text, item.x, item.y);
+      } else if (item.shape) {
+        drawShape(item, false);
+      } else if (item.from && item.to) {
+        drawLine(item.from, item.to, item.color, item.brushSize);
+      }
     });
+    historySynced = true;
+  });
 
-    socket.on('text', (data) => {
-      drawingHistory.push(data);
-      ctx.fillStyle = data.color;
-      ctx.font = `${data.size * 5}px sans-serif`;
-      ctx.fillText(data.text, data.x, data.y);
-    });
+  socket.on('draw', (data) => {
+    drawingHistory.push(data);
+    drawLine(data.from, data.to, data.color, data.brushSize);
+  });
 
-    socket.on('clear', () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawingHistory = [];
-    });
+  socket.on('text', (data) => {
+    drawingHistory.push(data);
+    ctx.fillStyle = data.color;
+    ctx.font = `${data.size * 5}px sans-serif`;
+    ctx.fillText(data.text, data.x, data.y);
+  });
 
-    socket.on('shape', (data) => {
-      drawingHistory.push(data);
-      drawShape(data, false);
-    });
+  socket.on('shape', (data) => {
+    drawingHistory.push(data);
+    drawShape(data, false);
+  });
+
+  socket.on('clear', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawingHistory = [];
   });
 }
 
-// Example usage (replace with your actual room join logic)
-connectSocket('testroom');
+// Example to call after user enters/generates room code:
+// connectSocket('ROOMCODE123');
 
 resizeCanvas();
