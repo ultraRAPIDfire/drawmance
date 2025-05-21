@@ -27,6 +27,8 @@ function resizeCanvas() {
         ctx.fillStyle = item.color;
         ctx.font = `${item.size * 5}px sans-serif`;
         ctx.fillText(item.text, item.x, item.y);
+      } else if (item.shape) {
+        drawShape(item);
       } else if (item.from && item.to) {
         drawLine(item.from, item.to, item.color, item.brushSize);
       }
@@ -156,6 +158,78 @@ function drawLine(from, to, strokeColor, size) {
   ctx.stroke();
 }
 
+function drawShape(data) {
+  ctx.strokeStyle = data.color;
+  ctx.lineWidth = data.brushSize;
+  ctx.fillStyle = data.color;
+
+  switch (data.shape) {
+    case 'polygon': drawPolygon(ctx, data); break;
+    case 'arrow': drawArrow(ctx, data); break;
+    case 'star': drawStar(ctx, data); break;
+    case 'lightning': drawLightning(ctx, data); break;
+    case 'callout': drawCallout(ctx, data); break;
+  }
+}
+
+// Shape Drawing Functions
+function drawPolygon(ctx, { x, y, sides = 5, radius = 50 }) {
+  const angle = (2 * Math.PI) / sides;
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const px = x + radius * Math.cos(i * angle);
+    const py = y + radius * Math.sin(i * angle);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawArrow(ctx, { from, to }) {
+  const headlen = 10;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const angle = Math.atan2(dy, dx);
+
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
+  ctx.moveTo(to.x, to.y);
+  ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
+  ctx.stroke();
+}
+
+function drawStar(ctx, { x, y, points = 5, outer = 30, inner = 15 }) {
+  let angle = Math.PI / points;
+  ctx.beginPath();
+  for (let i = 0; i < 2 * points; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    ctx.lineTo(x + r * Math.cos(i * angle), y + r * Math.sin(i * angle));
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawLightning(ctx, { x, y }) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + 10, y + 20);
+  ctx.lineTo(x + 5, y + 20);
+  ctx.lineTo(x + 15, y + 40);
+  ctx.stroke();
+}
+
+function drawCallout(ctx, { x, y }) {
+  ctx.beginPath();
+  ctx.arc(x, y, 40, 0, Math.PI * 2);
+  ctx.moveTo(x + 10, y + 40);
+  ctx.lineTo(x + 20, y + 60);
+  ctx.lineTo(x, y + 50);
+  ctx.stroke();
+}
+
 let listenersInitialized = false;
 
 function initSocket() {
@@ -190,6 +264,11 @@ function initSocket() {
       drawingHistory.push(data);
     });
 
+    socket.on('shape', (data) => {
+      drawShape(data);
+      drawingHistory.push(data);
+    });
+
     socket.on('drawingHistory', (history) => {
       drawingHistory = history;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -199,6 +278,8 @@ function initSocket() {
           ctx.fillStyle = item.color;
           ctx.font = `${item.size * 5}px sans-serif`;
           ctx.fillText(item.text, item.x, item.y);
+        } else if (item.shape) {
+          drawShape(item);
         } else if (item.from && item.to) {
           drawLine(item.from, item.to, item.color, item.brushSize);
         }
