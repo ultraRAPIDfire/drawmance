@@ -1,13 +1,17 @@
 const express = require('express');
-const path = require('path');
+const path = require('path'); // Required for serving files outside 'public'
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const PORT = process.env.PORT || 3000;
 
-// Serve static files from 'public' folder
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 app.use(express.json());
+
+// Serve index.html from the root directory
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 const activeRooms = new Set();
 const roomData = new Map(); // Store drawing history per room
@@ -22,8 +26,8 @@ app.post('/api/generateRoom', (req, res) => {
   let code;
   do {
     code = generateRoomCode();
-  } while (activeRooms.has(code));
-  activeRooms.add(code);
+  } while (activeRooms.has(code)); 
+  activeRooms.add(code); 
   res.json({ roomCode: code });
 });
 
@@ -43,7 +47,6 @@ app.get('/api/roomExists/:code', (req, res) => {
   res.json({ exists: activeRooms.has(code) });
 });
 
-// WebSocket communication
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -56,8 +59,10 @@ io.on('connection', (socket) => {
     socket.join(room);
     console.log(`Socket ${socket.id} joined room ${room}`);
 
+    // Send drawing history to newly joined user
     if (roomData.has(room)) {
-      socket.emit('drawingHistory', roomData.get(room));
+      const history = roomData.get(room);
+      socket.emit('drawingHistory', history);
     } else {
       roomData.set(room, []);
     }
@@ -65,26 +70,36 @@ io.on('connection', (socket) => {
 
   socket.on('draw', (data) => {
     const { room } = data;
-    if (!roomData.has(room)) roomData.set(room, []);
+
+    if (!roomData.has(room)) {
+      roomData.set(room, []);
+    }
     roomData.get(room).push(data);
+
     socket.to(room).emit('draw', data);
   });
 
   socket.on('text', (data) => {
     const { room } = data;
-    if (!roomData.has(room)) roomData.set(room, []);
+
+    if (!roomData.has(room)) {
+      roomData.set(room, []);
+    }
     roomData.get(room).push(data);
+
     socket.to(room).emit('text', data);
   });
 
   socket.on('clear', (room) => {
     roomData.set(room, []);
+
     io.to(room).emit('clear');
   });
 
   socket.on('requestHistory', (room) => {
     if (roomData.has(room)) {
-      socket.emit('drawingHistory', roomData.get(room));
+      const history = roomData.get(room);
+      socket.emit('drawingHistory', history);
     }
   });
 
@@ -93,12 +108,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Catch-all route for client-side routing support (important for /ROOMCODE URLs)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Start server
 http.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
